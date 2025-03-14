@@ -9,7 +9,7 @@ const store = useAppStore();
 <template>
   <q-layout view="hhh lpR fff">
     <template v-if="store.isInitialized">
-      <q-header>
+      <q-header v-if="store.account">
         <q-toolbar>
           <q-tabs align="left" no-caps shrink stretch>
             <q-route-tab to="/" label="Home" />
@@ -28,7 +28,7 @@ const store = useAppStore();
         <router-view />
       </q-page-container>
 
-      <app-footer />
+      <app-footer v-if="store.account" />
     </template>
     <q-page-container v-else>
       <q-page :style-fn="fullHeightPageStyleFn">

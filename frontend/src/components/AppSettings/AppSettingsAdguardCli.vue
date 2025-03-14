@@ -5,6 +5,10 @@ import { shallowRef, watch } from "vue";
 
 const store = useAppStore();
 
+const emit = defineEmits<{
+  ok: [];
+}>();
+
 const adGuardBin = shallowRef("");
 
 watch(
@@ -37,6 +41,7 @@ async function save() {
       success: true,
       message: store.cliVersion,
     };
+    emit("ok");
   } catch (e) {
     saveResult.value = {
       success: false,

@@ -155,3 +155,7 @@ func (a *App) GetAdGuardVersion() (string, error) {
 func (a *App) GetAdGuardStatus() (*adguard.Status, error) {
 	return a.adGuardCli.Status()
 }
+
+func (a *App) GetAdGuardAccount() (*adguard.Account, error) {
+	return a.adGuardCli.Account()
+}
