@@ -7,6 +7,8 @@ toolchain go1.24.0
 require github.com/wailsapp/wails/v2 v2.10.1
 
 require (
+	// Commit 6539193 fixes https://github.com/fyne-io/systray/issues/62
+	fyne.io/systray v1.11.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	gopkg.in/yaml.v3 v3.0.1
 )

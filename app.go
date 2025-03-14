@@ -4,15 +4,27 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"fyne.io/systray"
 	"github.com/downace/adguardvpn-desktop/internal/adguard"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"os"
+	"os/signal"
 	"path/filepath"
 )
 
+//go:embed build/trayicon_connected.png
+var trayIconConnected []byte
+
+//go:embed build/trayicon_disconnected.png
+var trayIconDisconnected []byte
+
 type App struct {
-	ctx    context.Context
-	config *AppConfig
+	ctx                   context.Context
+	config                *AppConfig
+	hidden                bool
+	trayStart             func()
+	trayEnd               func()
+	shouldShutdownOnClose bool
 
 	adGuardCli adguard.Cli
 }
@@ -27,13 +39,56 @@ func NewApp() *App {
 		config: makeConfig(filepath.Join(cwd(), "config.yaml")),
 	}
 
+	app.trayStart, app.trayEnd = systray.RunWithExternalLoop(app.initTray(), nil)
 	app.adGuardCli = adguard.Cli{}
 
 	return &app
 }
 
+func (a *App) setWindowHidden(hidden bool) {
+	a.hidden = hidden
+}
+
+func (a *App) initTray() func() {
+	return func() {
+		systray.SetIcon(trayIconDisconnected)
+		systray.SetTitle("AdGuard VPN")
+		mToggle := systray.AddMenuItem("Toggle Window", "Toggle Window")
+		systray.AddSeparator()
+		mQuit := systray.AddMenuItem("Quit", "Quit")
+
+		go func() {
+			for range mToggle.ClickedCh {
+				if a.hidden {
+					runtime.WindowShow(a.ctx)
+				} else {
+					runtime.WindowHide(a.ctx)
+				}
+				a.setWindowHidden(!a.hidden)
+			}
+		}()
+
+		go func() {
+			for range mQuit.ClickedCh {
+				a.shouldShutdownOnClose = true
+				runtime.Quit(a.ctx)
+			}
+		}()
+	}
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	sigintCh := make(chan os.Signal, 1)
+	signal.Notify(sigintCh, os.Interrupt)
+	go func() {
+		for range sigintCh {
+			a.shouldShutdownOnClose = true
+		}
+	}()
+
+	a.trayStart()
 
 	err := a.config.load()
 
@@ -46,6 +101,19 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.adGuardCli.CliBin = a.config.AdGuardBin
+}
+
+func (a *App) beforeClose(ctx context.Context) (prevent bool) {
+	if a.shouldShutdownOnClose {
+		return false
+	}
+	runtime.WindowHide(ctx)
+	a.setWindowHidden(true)
+	return true
+}
+
+func (a *App) shutdown(_ context.Context) {
+	a.trayEnd()
 }
 
 func (a *App) PickFilePath() (string, error) {
