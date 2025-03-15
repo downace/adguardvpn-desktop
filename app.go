@@ -159,3 +159,7 @@ func (a *App) GetAdGuardStatus() (*adguard.Status, error) {
 func (a *App) GetAdGuardAccount() (*adguard.Account, error) {
 	return a.adGuardCli.Account()
 }
+
+func (a *App) AdGuardListLocations() ([]adguard.Location, error) {
+	return a.adGuardCli.ListLocations()
+}

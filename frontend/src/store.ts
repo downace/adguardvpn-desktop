@@ -1,4 +1,5 @@
 import {
+  AdGuardListLocations,
   GetAdGuardAccount,
   GetAdGuardBin,
   GetAdGuardStatus,
@@ -7,7 +8,7 @@ import {
 } from "@/go/main/App";
 import type { adguard } from "@/go/models";
 import { defineStore } from "pinia";
-import { computed, onBeforeMount, readonly, shallowRef } from "vue";
+import { computed, onBeforeMount, readonly, shallowRef, watch } from "vue";
 
 export const useAppStore = defineStore("app", () => {
   const isInitialized = shallowRef(false);
@@ -15,6 +16,8 @@ export const useAppStore = defineStore("app", () => {
   const cliVersion = shallowRef("");
   const account = shallowRef<adguard.Account | null>(null);
   const status = shallowRef<adguard.Status | null>(null);
+  const locations = shallowRef<adguard.Location[]>([]);
+  const locationsLoading = shallowRef(false);
 
   const isPremium = computed(
     () => account.value?.subscription.type === "PREMIUM",
@@ -47,6 +50,21 @@ export const useAppStore = defineStore("app", () => {
     account.value = await GetAdGuardAccount();
   }
 
+  watch(account, (acc) => {
+    if (acc) {
+      void loadLocations();
+    }
+  });
+
+  async function loadLocations() {
+    locationsLoading.value = true;
+    try {
+      locations.value = await AdGuardListLocations();
+    } finally {
+      locationsLoading.value = false;
+    }
+  }
+
   async function updateAdGuardBin(bin: string) {
     cliVersion.value = await UpdateAdGuardBin(bin);
     cliBin.value = bin;
@@ -58,6 +76,8 @@ export const useAppStore = defineStore("app", () => {
     cliVersion: readonly(cliVersion),
     account: readonly(account),
     status: readonly(status),
+    locations: readonly(locations),
+    locationsLoading: readonly(locationsLoading),
 
     isPremium,
 

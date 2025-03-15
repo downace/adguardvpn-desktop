@@ -9,6 +9,12 @@ export namespace adguard {
 	    username: string;
 	    subscription: Subscription;
 	}
+	export interface Location {
+	    iso: string;
+	    country: string;
+	    city: string;
+	    ping: number;
+	}
 	export interface Status {
 	    connected: boolean;
 	}

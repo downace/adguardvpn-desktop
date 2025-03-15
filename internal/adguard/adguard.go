@@ -3,6 +3,7 @@ package adguard
 import (
 	"fmt"
 	"github.com/acarl005/stripansi"
+	"github.com/downace/adguardvpn-desktop/internal/common"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -30,6 +31,14 @@ type Account struct {
 
 type Status struct {
 	Connected bool `json:"connected"`
+}
+
+type Location struct {
+	Iso     string `json:"iso"`
+	Country string `json:"country"`
+	City    string `json:"city"`
+	Ping    int    `json:"ping"`
+	// Estimate string // don't know what is it
 }
 
 type Cli struct {
@@ -118,4 +127,37 @@ func (a *Cli) Account() (*Account, error) {
 	}
 
 	return &account, nil
+}
+
+func (a *Cli) ListLocations() ([]Location, error) {
+	output, err := a.exec("list-locations")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if strings.Contains(output, "Please log in") {
+		return make([]Location, 0), nil
+	}
+
+	return common.ParseTable(output, func(row map[string]string) Location {
+		location := Location{}
+		for key, value := range row {
+			switch key {
+			case "ISO":
+				location.Iso = value
+			case "COUNTRY":
+				location.Country = value
+			case "CITY":
+				location.City = value
+			case "PING":
+				ping, err := strconv.ParseInt(value, 10, 64)
+				if err != nil {
+					ping = -1
+				}
+				location.Ping = int(ping)
+			}
+		}
+		return location
+	}), nil
 }
