@@ -4,7 +4,10 @@ go 1.23.0
 
 toolchain go1.24.0
 
-require github.com/wailsapp/wails/v2 v2.10.1
+require (
+	github.com/wailsapp/wails/v2 v2.10.1
+	golang.org/x/text v0.22.0
+)
 
 require (
 	// Commit 6539193 fixes https://github.com/fyne-io/systray/issues/62
@@ -39,5 +42,4 @@ require (
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
 )

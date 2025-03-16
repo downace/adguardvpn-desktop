@@ -17,6 +17,8 @@ export namespace adguard {
 	}
 	export interface Status {
 	    connected: boolean;
+	    location?: Location;
+	    mode: string;
 	}
 
 }

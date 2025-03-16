@@ -1,5 +1,5 @@
 import {
-  AdGuardListLocations,
+  AdGuardGetLocations,
   GetAdGuardAccount,
   GetAdGuardBin,
   GetAdGuardStatus,
@@ -59,7 +59,7 @@ export const useAppStore = defineStore("app", () => {
   async function loadLocations() {
     locationsLoading.value = true;
     try {
-      locations.value = await AdGuardListLocations();
+      locations.value = await AdGuardGetLocations();
     } finally {
       locationsLoading.value = false;
     }

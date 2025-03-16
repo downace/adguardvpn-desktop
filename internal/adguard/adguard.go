@@ -4,11 +4,20 @@ import (
 	"fmt"
 	"github.com/acarl005/stripansi"
 	"github.com/downace/adguardvpn-desktop/internal/common"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+)
+
+type VpnMode = string
+
+const (
+	VpnModeTun   = "tun"
+	VpnModeSocks = "socks"
 )
 
 type SubscriptionType = string
@@ -30,7 +39,9 @@ type Account struct {
 }
 
 type Status struct {
-	Connected bool `json:"connected"`
+	Connected bool      `json:"connected"`
+	Location  *Location `json:"location"`
+	VpnMode   VpnMode   `json:"mode"`
 }
 
 type Location struct {
@@ -43,6 +54,8 @@ type Location struct {
 
 type Cli struct {
 	CliBin string
+
+	locations []Location
 }
 
 func (a *Cli) exec(args ...string) (string, error) {
@@ -63,17 +76,60 @@ func (a *Cli) Version() (string, error) {
 	return a.exec("--version")
 }
 
+var statusRe = regexp.MustCompile("Connected to (.+) in (.+) mode")
+
 func (a *Cli) Status() (*Status, error) {
 	statusOutput, err := a.exec("status")
 	if err != nil {
 		return nil, err
 	}
 
-	status := Status{
-		Connected: strings.Contains(statusOutput, "is connected"),
+	matches := statusRe.FindStringSubmatch(statusOutput)
+
+	if matches == nil {
+		return &Status{
+			Connected: false,
+			Location:  nil,
+		}, nil
+	} else {
+		location, _ := a.getLocationByCityName(matches[1])
+		if location == nil {
+			location = &Location{
+				City: cases.Title(language.English).String(matches[1]),
+			}
+		}
+		return &Status{
+			Connected: true,
+			Location:  location,
+			VpnMode:   matches[2],
+		}, nil
+	}
+}
+
+func (a *Cli) getLocationByCityName(city string) (*Location, error) {
+	locations, err := a.GetLocations()
+	if err != nil {
+		return nil, err
+	}
+	for _, location := range locations {
+		if strings.ToLower(location.City) == strings.ToLower(city) {
+			return &location, nil
+		}
 	}
 
-	return &status, nil
+	return nil, nil
+}
+
+func (a *Cli) GetLocations() ([]Location, error) {
+	if a.locations == nil {
+		newLocations, err := a.RefreshLocations()
+		if err != nil {
+			return nil, err
+		}
+		a.locations = newLocations
+	}
+
+	return a.locations, nil
 }
 
 var (
@@ -129,7 +185,7 @@ func (a *Cli) Account() (*Account, error) {
 	return &account, nil
 }
 
-func (a *Cli) ListLocations() ([]Location, error) {
+func (a *Cli) RefreshLocations() ([]Location, error) {
 	output, err := a.exec("list-locations")
 
 	if err != nil {
