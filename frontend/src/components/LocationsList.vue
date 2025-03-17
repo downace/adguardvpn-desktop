@@ -37,7 +37,12 @@ const { results } = useFuse(
       Loading Locations...
     </div>
     <q-list v-else class="scroll-y">
-      <location-item v-for="res in results" :location="res.item" />
+      <location-item
+        v-for="res in results"
+        :location="res.item"
+        clickable
+        @click="store.connect(res.item)"
+      />
     </q-list>
   </div>
 </template>

@@ -51,8 +51,7 @@ func (a *App) setWindowHidden(hidden bool) {
 
 func (a *App) initTray() func() {
 	return func() {
-		systray.SetIcon(trayIconDisconnected)
-		systray.SetTitle("AdGuard VPN")
+		a.handleStatusChange(&adguard.Status{Connected: false})
 		mToggle := systray.AddMenuItem("Toggle Window", "Toggle Window")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit")
@@ -153,7 +152,7 @@ func (a *App) GetAdGuardVersion() (string, error) {
 }
 
 func (a *App) GetAdGuardStatus() (*adguard.Status, error) {
-	return a.adGuardCli.Status()
+	return a.refreshStatus()
 }
 
 func (a *App) GetAdGuardAccount() (*adguard.Account, error) {
@@ -162,4 +161,45 @@ func (a *App) GetAdGuardAccount() (*adguard.Account, error) {
 
 func (a *App) AdGuardGetLocations() ([]adguard.Location, error) {
 	return a.adGuardCli.GetLocations()
+}
+
+func (a *App) AdGuardConnect(location string) (*adguard.Status, error) {
+	err := a.adGuardCli.Connect(location)
+	if err == nil {
+		// If Connect works, then Status should work without errors
+		status, _ := a.refreshStatus()
+		return status, nil
+	} else {
+		return nil, err
+	}
+}
+
+func (a *App) AdGuardDisconnect() (*adguard.Status, error) {
+	err := a.adGuardCli.Disconnect()
+	if err == nil {
+		// If Disconnect works, then Status should work without errors
+		status, _ := a.refreshStatus()
+		return status, err
+	} else {
+		return nil, err
+	}
+}
+
+func (a *App) refreshStatus() (*adguard.Status, error) {
+	status, err := a.adGuardCli.Status()
+	if err == nil {
+		a.handleStatusChange(status)
+	}
+
+	return status, err
+}
+
+func (a *App) handleStatusChange(status *adguard.Status) {
+	if status.Connected {
+		systray.SetIcon(trayIconConnected)
+		systray.SetTitle("AdGuard VPN - Connected to " + status.Location.City)
+	} else {
+		systray.SetIcon(trayIconDisconnected)
+		systray.SetTitle("AdGuard VPN - Disconnected")
+	}
 }

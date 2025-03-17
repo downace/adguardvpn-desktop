@@ -1,4 +1,6 @@
 import {
+  AdGuardConnect,
+  AdGuardDisconnect,
   AdGuardGetLocations,
   GetAdGuardAccount,
   GetAdGuardBin,
@@ -16,6 +18,7 @@ export const useAppStore = defineStore("app", () => {
   const cliVersion = shallowRef("");
   const account = shallowRef<adguard.Account | null>(null);
   const status = shallowRef<adguard.Status | null>(null);
+  const connecting = shallowRef(false);
   const locations = shallowRef<adguard.Location[]>([]);
   const locationsLoading = shallowRef(false);
 
@@ -70,12 +73,48 @@ export const useAppStore = defineStore("app", () => {
     cliBin.value = bin;
   }
 
+  async function toggleConnection() {
+    if (status.value?.connected) {
+      return disconnect();
+    } else {
+      return connect();
+    }
+  }
+
+  async function connect(location?: adguard.Location) {
+    if (connecting.value) {
+      return;
+    }
+    connecting.value = true;
+
+    try {
+      status.value = await AdGuardConnect(location?.city ?? "");
+    } finally {
+      connecting.value = false;
+    }
+  }
+
+  async function disconnect() {
+    if (connecting.value) {
+      return;
+    }
+
+    connecting.value = true;
+
+    try {
+      status.value = await AdGuardDisconnect();
+    } finally {
+      connecting.value = false;
+    }
+  }
+
   return {
     isInitialized: readonly(isInitialized),
     adGuardBin: readonly(cliBin),
     cliVersion: readonly(cliVersion),
     account: readonly(account),
     status: readonly(status),
+    connecting: readonly(connecting),
     locations: readonly(locations),
     locationsLoading: readonly(locationsLoading),
 
@@ -83,5 +122,7 @@ export const useAppStore = defineStore("app", () => {
 
     updateAdGuardBin,
     updateAccount,
+    connect,
+    toggleConnection,
   };
 });

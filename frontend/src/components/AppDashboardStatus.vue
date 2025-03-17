@@ -14,7 +14,8 @@ const store = useAppStore();
     </h4>
     <q-btn
       :label="store.status?.connected ? 'Disconnect' : 'Connect'"
-      disable
+      :loading="store.connecting"
+      @click="store.toggleConnection()"
     />
     <!-- 54px is banner height, prevents size changes -->
     <q-banner

@@ -139,6 +139,22 @@ var (
 	licenseValidUntilRe = regexp.MustCompile("Your subscription will be renewed on (.+)")
 )
 
+func (a *Cli) Connect(location string) error {
+	args := []string{"connect", "--yes"}
+	if location != "" {
+		args = append(args, "--location", location)
+	}
+	_, err := a.exec(args...)
+
+	return err
+}
+
+func (a *Cli) Disconnect() error {
+	_, err := a.exec("disconnect")
+
+	return err
+}
+
 const logInMessage = "Please log in"
 
 func (a *Cli) Account() (*Account, error) {
