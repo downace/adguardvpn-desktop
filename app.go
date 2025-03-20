@@ -7,9 +7,11 @@ import (
 	"fyne.io/systray"
 	"github.com/downace/adguardvpn-desktop/internal/adguard"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"maps"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 )
 
 //go:embed build/trayicon_connected.png
@@ -202,4 +204,18 @@ func (a *App) handleStatusChange(status *adguard.Status) {
 		systray.SetIcon(trayIconDisconnected)
 		systray.SetTitle("AdGuard VPN - Disconnected")
 	}
+}
+
+func (a *App) GetFavoriteLocations() []string {
+	return slices.AppendSeq([]string{}, maps.Values(a.config.FavoriteLocations))
+}
+
+func (a *App) AddFavoriteLocation(location string) error {
+	a.config.FavoriteLocations[location] = location
+	return a.config.save()
+}
+
+func (a *App) RemoveFavoriteLocation(location string) error {
+	delete(a.config.FavoriteLocations, location)
+	return a.config.save()
 }

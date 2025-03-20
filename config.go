@@ -6,16 +6,18 @@ import (
 )
 
 type AppConfig struct {
-	loaded     bool
-	path       string
-	AdGuardBin string `yaml:"adGuardBin"`
+	loaded            bool
+	path              string
+	AdGuardBin        string            `yaml:"adGuardBin"`
+	FavoriteLocations map[string]string `yaml:"favoriteLocations"`
 }
 
 func makeConfig(path string) *AppConfig {
 	return &AppConfig{
-		loaded:     false,
-		path:       path,
-		AdGuardBin: "adguardvpn-cli",
+		loaded:            false,
+		path:              path,
+		AdGuardBin:        "adguardvpn-cli",
+		FavoriteLocations: make(map[string]string),
 	}
 }
 

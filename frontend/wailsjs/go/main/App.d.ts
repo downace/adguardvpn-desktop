@@ -8,6 +8,8 @@ export function AdGuardDisconnect():Promise<adguard.Status>;
 
 export function AdGuardGetLocations():Promise<Array<adguard.Location>>;
 
+export function AddFavoriteLocation(arg1:string):Promise<void>;
+
 export function GetAdGuardAccount():Promise<adguard.Account>;
 
 export function GetAdGuardBin():Promise<string>;
@@ -16,6 +18,10 @@ export function GetAdGuardStatus():Promise<adguard.Status>;
 
 export function GetAdGuardVersion():Promise<string>;
 
+export function GetFavoriteLocations():Promise<Array<string>>;
+
 export function PickFilePath():Promise<string>;
+
+export function RemoveFavoriteLocation(arg1:string):Promise<void>;
 
 export function UpdateAdGuardBin(arg1:string):Promise<string>;

@@ -1,4 +1,5 @@
 import {
+  AddFavoriteLocation,
   AdGuardConnect,
   AdGuardDisconnect,
   AdGuardGetLocations,
@@ -6,11 +7,20 @@ import {
   GetAdGuardBin,
   GetAdGuardStatus,
   GetAdGuardVersion,
+  GetFavoriteLocations,
+  RemoveFavoriteLocation,
   UpdateAdGuardBin,
 } from "@/go/main/App";
 import type { adguard } from "@/go/models";
 import { defineStore } from "pinia";
-import { computed, onBeforeMount, readonly, shallowRef, watch } from "vue";
+import {
+  computed,
+  onBeforeMount,
+  readonly,
+  shallowReactive,
+  shallowRef,
+  watch,
+} from "vue";
 
 export const useAppStore = defineStore("app", () => {
   const isInitialized = shallowRef(false);
@@ -20,6 +30,7 @@ export const useAppStore = defineStore("app", () => {
   const status = shallowRef<adguard.Status | null>(null);
   const connecting = shallowRef(false);
   const locations = shallowRef<adguard.Location[]>([]);
+  const favoriteLocations = shallowReactive(new Set<string>());
   const locationsLoading = shallowRef(false);
 
   const isPremium = computed(
@@ -62,10 +73,31 @@ export const useAppStore = defineStore("app", () => {
   async function loadLocations() {
     locationsLoading.value = true;
     try {
-      locations.value = await AdGuardGetLocations();
+      const [allLocations, favorites] = await Promise.all([
+        AdGuardGetLocations(),
+        GetFavoriteLocations(),
+      ]);
+      locations.value = allLocations;
+      for (const loc of favorites) {
+        favoriteLocations.add(loc);
+      }
     } finally {
       locationsLoading.value = false;
     }
+  }
+
+  function isFavorite(location: adguard.Location) {
+    return favoriteLocations.has(location.city);
+  }
+
+  async function addToFavorites(location: adguard.Location) {
+    await AddFavoriteLocation(location.city);
+    favoriteLocations.add(location.city);
+  }
+
+  async function removeFromFavorites(location: adguard.Location) {
+    await RemoveFavoriteLocation(location.city);
+    favoriteLocations.delete(location.city);
   }
 
   async function updateAdGuardBin(bin: string) {
@@ -124,5 +156,8 @@ export const useAppStore = defineStore("app", () => {
     updateAccount,
     connect,
     toggleConnection,
+    isFavorite,
+    addToFavorites,
+    removeFromFavorites,
   };
 });

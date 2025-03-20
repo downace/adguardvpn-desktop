@@ -14,6 +14,10 @@ export function AdGuardGetLocations() {
   return window['go']['main']['App']['AdGuardGetLocations']();
 }
 
+export function AddFavoriteLocation(arg1) {
+  return window['go']['main']['App']['AddFavoriteLocation'](arg1);
+}
+
 export function GetAdGuardAccount() {
   return window['go']['main']['App']['GetAdGuardAccount']();
 }
@@ -30,8 +34,16 @@ export function GetAdGuardVersion() {
   return window['go']['main']['App']['GetAdGuardVersion']();
 }
 
+export function GetFavoriteLocations() {
+  return window['go']['main']['App']['GetFavoriteLocations']();
+}
+
 export function PickFilePath() {
   return window['go']['main']['App']['PickFilePath']();
+}
+
+export function RemoveFavoriteLocation(arg1) {
+  return window['go']['main']['App']['RemoveFavoriteLocation'](arg1);
 }
 
 export function UpdateAdGuardBin(arg1) {
