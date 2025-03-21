@@ -39,9 +39,10 @@ type Account struct {
 }
 
 type Status struct {
-	Connected bool      `json:"connected"`
-	Location  *Location `json:"location"`
-	VpnMode   VpnMode   `json:"mode"`
+	Connecting bool      `json:"connecting"`
+	Connected  bool      `json:"connected"`
+	Location   *Location `json:"location"`
+	VpnMode    VpnMode   `json:"mode"`
 }
 
 type Location struct {
@@ -53,9 +54,11 @@ type Location struct {
 }
 
 type Cli struct {
-	CliBin string
+	CliBin         string
+	OnStatusChange func(status *Status)
 
 	locations []Location
+	status    *Status
 }
 
 func (a *Cli) exec(args ...string) (string, error) {
@@ -78,7 +81,25 @@ func (a *Cli) Version() (string, error) {
 
 var statusRe = regexp.MustCompile("Connected to (.+) in (.+) mode")
 
-func (a *Cli) Status() (*Status, error) {
+func (a *Cli) GetStatus() (*Status, error) {
+	if a.status == nil {
+		err := a.RefreshStatus()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return a.status, nil
+}
+
+func (a *Cli) RefreshStatus() (err error) {
+	a.status, err = a.fetchStatus()
+	if err == nil {
+		a.OnStatusChange(a.status)
+	}
+	return
+}
+
+func (a *Cli) fetchStatus() (*Status, error) {
 	statusOutput, err := a.exec("status")
 	if err != nil {
 		return nil, err
@@ -88,8 +109,9 @@ func (a *Cli) Status() (*Status, error) {
 
 	if matches == nil {
 		return &Status{
-			Connected: false,
-			Location:  nil,
+			Connecting: false,
+			Connected:  false,
+			Location:   nil,
 		}, nil
 	} else {
 		location, _ := a.getLocationByCityName(matches[1])
@@ -99,9 +121,10 @@ func (a *Cli) Status() (*Status, error) {
 			}
 		}
 		return &Status{
-			Connected: true,
-			Location:  location,
-			VpnMode:   matches[2],
+			Connecting: false,
+			Connected:  true,
+			Location:   location,
+			VpnMode:    matches[2],
 		}, nil
 	}
 }
@@ -140,11 +163,22 @@ var (
 )
 
 func (a *Cli) Connect(location string) error {
+	status, err := a.GetStatus()
+	if err != nil {
+		return err
+	}
+	status.Connecting = true
+	a.OnStatusChange(status)
 	args := []string{"connect", "--yes"}
 	if location != "" {
 		args = append(args, "--location", location)
 	}
-	_, err := a.exec(args...)
+	_, err = a.exec(args...)
+
+	status.Connecting = false
+	if err == nil {
+		_ = a.RefreshStatus()
+	}
 
 	return err
 }
@@ -152,7 +186,23 @@ func (a *Cli) Connect(location string) error {
 func (a *Cli) Disconnect() error {
 	_, err := a.exec("disconnect")
 
+	if err == nil {
+		_ = a.RefreshStatus()
+	}
+
 	return err
+}
+
+func (a *Cli) ToggleConnection() error {
+	status, err := a.GetStatus()
+	if err != nil {
+		return err
+	}
+	if status.Connected {
+		return a.Disconnect()
+	} else {
+		return a.Connect("")
+	}
 }
 
 const logInMessage = "Please log in"

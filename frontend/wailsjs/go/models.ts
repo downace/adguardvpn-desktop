@@ -16,6 +16,7 @@ export namespace adguard {
 	    ping: number;
 	}
 	export interface Status {
+	    connecting: boolean;
 	    connected: boolean;
 	    location?: Location;
 	    mode: string;

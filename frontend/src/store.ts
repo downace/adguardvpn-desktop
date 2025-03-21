@@ -12,10 +12,12 @@ import {
   UpdateAdGuardBin,
 } from "@/go/main/App";
 import type { adguard } from "@/go/models";
+import { EventsOn } from "@/runtime";
 import { defineStore } from "pinia";
 import {
   computed,
   onBeforeMount,
+  onBeforeUnmount,
   readonly,
   shallowReactive,
   shallowRef,
@@ -41,8 +43,8 @@ export const useAppStore = defineStore("app", () => {
     try {
       await loadCliBin();
       await updateCliVersion();
-      await updateStatus();
       await updateAccount();
+      await updateStatus();
     } finally {
       isInitialized.value = true;
     }
@@ -59,6 +61,13 @@ export const useAppStore = defineStore("app", () => {
   async function updateStatus() {
     status.value = await GetAdGuardStatus();
   }
+
+  watch(status, (status) => {
+    if (status) {
+      // not using computed to allow instant update when user connects from app UI
+      connecting.value = status.connecting;
+    }
+  });
 
   async function updateAccount() {
     account.value = await GetAdGuardAccount();
@@ -106,6 +115,9 @@ export const useAppStore = defineStore("app", () => {
   }
 
   async function toggleConnection() {
+    if (status.value?.connecting) {
+      return;
+    }
     if (status.value?.connected) {
       return disconnect();
     } else {
@@ -120,7 +132,7 @@ export const useAppStore = defineStore("app", () => {
     connecting.value = true;
 
     try {
-      status.value = await AdGuardConnect(location?.city ?? "");
+      await AdGuardConnect(location?.city ?? "");
     } finally {
       connecting.value = false;
     }
@@ -134,11 +146,23 @@ export const useAppStore = defineStore("app", () => {
     connecting.value = true;
 
     try {
-      status.value = await AdGuardDisconnect();
+      await AdGuardDisconnect();
     } finally {
       connecting.value = false;
     }
   }
+
+  const unsubscribeFns = [
+    EventsOn("status-changed", (s) => {
+      status.value = s;
+    }),
+  ];
+
+  onBeforeUnmount(() => {
+    for (const un of unsubscribeFns) {
+      un();
+    }
+  });
 
   return {
     isInitialized: readonly(isInitialized),

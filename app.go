@@ -14,11 +14,22 @@ import (
 	"slices"
 )
 
+//go:embed build/trayicon_default.png
+var trayIconDefault []byte
+
+//go:embed build/trayicon_connecting.png
+var trayIconConnecting []byte
+
 //go:embed build/trayicon_connected.png
 var trayIconConnected []byte
 
 //go:embed build/trayicon_disconnected.png
 var trayIconDisconnected []byte
+
+type AppTrayMenuItems struct {
+	mToggleWindow *systray.MenuItem
+	mConnect      *systray.MenuItem
+}
 
 type App struct {
 	ctx                   context.Context
@@ -27,8 +38,8 @@ type App struct {
 	trayStart             func()
 	trayEnd               func()
 	shouldShutdownOnClose bool
-
-	adGuardCli adguard.Cli
+	trayMenuItems         AppTrayMenuItems
+	adGuardCli            adguard.Cli
 }
 
 func cwd() string {
@@ -42,30 +53,44 @@ func NewApp() *App {
 	}
 
 	app.trayStart, app.trayEnd = systray.RunWithExternalLoop(app.initTray(), nil)
-	app.adGuardCli = adguard.Cli{}
+	app.adGuardCli = adguard.Cli{
+		OnStatusChange: app.handleStatusChange,
+	}
 
 	return &app
 }
 
 func (a *App) setWindowHidden(hidden bool) {
 	a.hidden = hidden
+	if hidden {
+		runtime.WindowHide(a.ctx)
+		a.trayMenuItems.mToggleWindow.SetTitle("Show Window")
+	} else {
+		runtime.WindowShow(a.ctx)
+		a.trayMenuItems.mToggleWindow.SetTitle("Hide Window")
+	}
 }
 
 func (a *App) initTray() func() {
 	return func() {
-		a.handleStatusChange(&adguard.Status{Connected: false})
-		mToggle := systray.AddMenuItem("Toggle Window", "Toggle Window")
+		systray.SetIcon(trayIconDefault)
+		systray.SetTitle("AdGuard VPN")
+
+		a.trayMenuItems.mToggleWindow = systray.AddMenuItem("Hide Window", "Hide Window")
+		systray.AddSeparator()
+		a.trayMenuItems.mConnect = systray.AddMenuItem("Connect", "Connect")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
 		go func() {
-			for range mToggle.ClickedCh {
-				if a.hidden {
-					runtime.WindowShow(a.ctx)
-				} else {
-					runtime.WindowHide(a.ctx)
-				}
+			for range a.trayMenuItems.mToggleWindow.ClickedCh {
 				a.setWindowHidden(!a.hidden)
+			}
+		}()
+
+		go func() {
+			for range a.trayMenuItems.mConnect.ClickedCh {
+				_ = a.adGuardCli.ToggleConnection()
 			}
 		}()
 
@@ -102,6 +127,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.adGuardCli.CliBin = a.config.AdGuardBin
+	_ = a.adGuardCli.RefreshStatus()
 }
 
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
@@ -154,7 +180,7 @@ func (a *App) GetAdGuardVersion() (string, error) {
 }
 
 func (a *App) GetAdGuardStatus() (*adguard.Status, error) {
-	return a.refreshStatus()
+	return a.adGuardCli.GetStatus()
 }
 
 func (a *App) GetAdGuardAccount() (*adguard.Account, error) {
@@ -165,44 +191,32 @@ func (a *App) AdGuardGetLocations() ([]adguard.Location, error) {
 	return a.adGuardCli.GetLocations()
 }
 
-func (a *App) AdGuardConnect(location string) (*adguard.Status, error) {
-	err := a.adGuardCli.Connect(location)
-	if err == nil {
-		// If Connect works, then Status should work without errors
-		status, _ := a.refreshStatus()
-		return status, nil
-	} else {
-		return nil, err
-	}
+func (a *App) AdGuardConnect(location string) error {
+	return a.adGuardCli.Connect(location)
 }
 
-func (a *App) AdGuardDisconnect() (*adguard.Status, error) {
-	err := a.adGuardCli.Disconnect()
-	if err == nil {
-		// If Disconnect works, then Status should work without errors
-		status, _ := a.refreshStatus()
-		return status, err
-	} else {
-		return nil, err
-	}
-}
-
-func (a *App) refreshStatus() (*adguard.Status, error) {
-	status, err := a.adGuardCli.Status()
-	if err == nil {
-		a.handleStatusChange(status)
-	}
-
-	return status, err
+func (a *App) AdGuardDisconnect() error {
+	return a.adGuardCli.Disconnect()
 }
 
 func (a *App) handleStatusChange(status *adguard.Status) {
-	if status.Connected {
+	runtime.EventsEmit(a.ctx, "status-changed", status)
+
+	if status.Connecting {
+		systray.SetIcon(trayIconConnecting)
+		systray.SetTitle("AdGuard VPN - Connecting...")
+		a.trayMenuItems.mConnect.SetTitle("Connecting...")
+		a.trayMenuItems.mConnect.Disable()
+	} else if status.Connected {
 		systray.SetIcon(trayIconConnected)
 		systray.SetTitle("AdGuard VPN - Connected to " + status.Location.City)
+		a.trayMenuItems.mConnect.SetTitle("Disconnect")
+		a.trayMenuItems.mConnect.Enable()
 	} else {
 		systray.SetIcon(trayIconDisconnected)
 		systray.SetTitle("AdGuard VPN - Disconnected")
+		a.trayMenuItems.mConnect.SetTitle("Connect")
+		a.trayMenuItems.mConnect.Enable()
 	}
 }
 
