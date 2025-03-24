@@ -10,8 +10,28 @@ export function AdGuardDisconnect() {
   return window['go']['main']['App']['AdGuardDisconnect']();
 }
 
+export function AdGuardExclusionsAdd(arg1) {
+  return window['go']['main']['App']['AdGuardExclusionsAdd'](arg1);
+}
+
+export function AdGuardExclusionsRemove(arg1) {
+  return window['go']['main']['App']['AdGuardExclusionsRemove'](arg1);
+}
+
+export function AdGuardExclusionsShow() {
+  return window['go']['main']['App']['AdGuardExclusionsShow']();
+}
+
+export function AdGuardGetExclusionMode() {
+  return window['go']['main']['App']['AdGuardGetExclusionMode']();
+}
+
 export function AdGuardGetLocations() {
   return window['go']['main']['App']['AdGuardGetLocations']();
+}
+
+export function AdGuardSetExclusionMode(arg1) {
+  return window['go']['main']['App']['AdGuardSetExclusionMode'](arg1);
 }
 
 export function AddFavoriteLocation(arg1) {

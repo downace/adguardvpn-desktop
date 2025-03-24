@@ -13,6 +13,7 @@ const store = useAppStore();
         <q-toolbar>
           <q-tabs align="left" no-caps shrink stretch>
             <q-route-tab to="/" label="Home" />
+            <q-route-tab to="/exclusions" label="Exclusions" />
             <q-route-tab to="/settings" label="Settings" />
           </q-tabs>
 

@@ -8,6 +8,7 @@ import (
 	"golang.org/x/text/language"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,13 @@ type VpnMode = string
 const (
 	VpnModeTun   = "tun"
 	VpnModeSocks = "socks"
+)
+
+type ExclusionMode string
+
+const (
+	ExclusionModeGeneral   ExclusionMode = "general"
+	ExclusionModeSelective ExclusionMode = "selective"
 )
 
 type SubscriptionType = string
@@ -282,4 +290,62 @@ func (a *Cli) RefreshLocations() ([]Location, error) {
 		}
 		return location
 	}), nil
+}
+
+var exclusionModeRe = regexp.MustCompile(`exclusion mode is (.+)`)
+
+func (a *Cli) GetExclusionMode() (ExclusionMode, error) {
+	output, err := a.exec("site-exclusions", "mode")
+
+	if err != nil {
+		return "", err
+	}
+
+	matches := exclusionModeRe.FindStringSubmatch(output)
+
+	if matches == nil {
+		return "", fmt.Errorf("unable to parse exclusion mode: %s", output)
+	}
+
+	return ExclusionMode(strings.ToLower(matches[1])), nil
+}
+
+func (a *Cli) SetExclusionMode(newMode ExclusionMode) error {
+	_, err := a.exec("site-exclusions", "mode", string(newMode))
+
+	return err
+}
+
+func (a *Cli) ExclusionsShow() ([]string, error) {
+	output, err := a.exec("site-exclusions", "show")
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]string, 0)
+
+	for line := range strings.Lines(output) {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Exclusions for") || line == "" {
+			continue
+		}
+
+		result = append(result, line)
+	}
+
+	return result, nil
+}
+
+func (a *Cli) ExclusionsAdd(exclusions []string) error {
+	args := slices.Concat([]string{"site-exclusions", "add"}, exclusions)
+	_, err := a.exec(args...)
+
+	return err
+}
+
+func (a *Cli) ExclusionsRemove(exclusion string) error {
+	_, err := a.exec("site-exclusions", "remove", exclusion)
+
+	return err
 }

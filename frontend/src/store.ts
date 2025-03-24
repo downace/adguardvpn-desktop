@@ -2,7 +2,12 @@ import {
   AddFavoriteLocation,
   AdGuardConnect,
   AdGuardDisconnect,
+  AdGuardExclusionsAdd,
+  AdGuardExclusionsRemove,
+  AdGuardExclusionsShow,
+  AdGuardGetExclusionMode,
   AdGuardGetLocations,
+  AdGuardSetExclusionMode,
   GetAdGuardAccount,
   GetAdGuardBin,
   GetAdGuardStatus,
@@ -11,7 +16,7 @@ import {
   RemoveFavoriteLocation,
   UpdateAdGuardBin,
 } from "@/go/main/App";
-import type { adguard } from "@/go/models";
+import { adguard } from "@/go/models";
 import { EventsOn } from "@/runtime";
 import { defineStore } from "pinia";
 import {
@@ -34,6 +39,7 @@ export const useAppStore = defineStore("app", () => {
   const locations = shallowRef<adguard.Location[]>([]);
   const favoriteLocations = shallowReactive(new Set<string>());
   const locationsLoading = shallowRef(false);
+  const exclusionMode = shallowRef(adguard.ExclusionMode.GENERAL);
 
   const isPremium = computed(
     () => account.value?.subscription.type === "PREMIUM",
@@ -45,6 +51,7 @@ export const useAppStore = defineStore("app", () => {
       await updateCliVersion();
       await updateAccount();
       await updateStatus();
+      await updateExclusionMode();
     } finally {
       isInitialized.value = true;
     }
@@ -60,6 +67,27 @@ export const useAppStore = defineStore("app", () => {
 
   async function updateStatus() {
     status.value = await GetAdGuardStatus();
+  }
+
+  async function updateExclusionMode() {
+    exclusionMode.value = await AdGuardGetExclusionMode();
+  }
+
+  async function setExclusionMode(mode: adguard.ExclusionMode) {
+    await AdGuardSetExclusionMode(mode);
+    exclusionMode.value = mode;
+  }
+
+  async function getExclusionsList() {
+    return AdGuardExclusionsShow();
+  }
+
+  async function addExclusions(exclusions: string[]) {
+    return AdGuardExclusionsAdd(exclusions);
+  }
+
+  async function deleteExclusion(exclusion: string) {
+    return AdGuardExclusionsRemove(exclusion);
   }
 
   watch(status, (status) => {
@@ -173,6 +201,7 @@ export const useAppStore = defineStore("app", () => {
     connecting: readonly(connecting),
     locations: readonly(locations),
     locationsLoading: readonly(locationsLoading),
+    exclusionMode: readonly(exclusionMode),
 
     isPremium,
 
@@ -183,5 +212,9 @@ export const useAppStore = defineStore("app", () => {
     isFavorite,
     addToFavorites,
     removeFromFavorites,
+    setExclusionMode,
+    getExclusionsList,
+    addExclusions,
+    deleteExclusion,
   };
 });

@@ -1,5 +1,9 @@
 export namespace adguard {
 	
+	export enum ExclusionMode {
+	    GENERAL = "general",
+	    SELECTIVE = "selective",
+	}
 	export interface Subscription {
 	    type: string;
 	    validUntil: string;

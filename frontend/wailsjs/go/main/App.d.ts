@@ -6,7 +6,17 @@ export function AdGuardConnect(arg1:string):Promise<void>;
 
 export function AdGuardDisconnect():Promise<void>;
 
+export function AdGuardExclusionsAdd(arg1:Array<string>):Promise<void>;
+
+export function AdGuardExclusionsRemove(arg1:string):Promise<void>;
+
+export function AdGuardExclusionsShow():Promise<Array<string>>;
+
+export function AdGuardGetExclusionMode():Promise<adguard.ExclusionMode>;
+
 export function AdGuardGetLocations():Promise<Array<adguard.Location>>;
+
+export function AdGuardSetExclusionMode(arg1:adguard.ExclusionMode):Promise<void>;
 
 export function AddFavoriteLocation(arg1:string):Promise<void>;
 

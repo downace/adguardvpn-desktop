@@ -31,6 +31,9 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
+		EnumBind: []interface{}{
+			allExclusionModes,
+		},
 		Linux: &linux.Options{
 			Icon: appIcon,
 		},

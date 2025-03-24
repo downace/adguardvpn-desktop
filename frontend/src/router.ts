@@ -1,4 +1,5 @@
 import AppDashboard from "@/components/AppDashboard.vue";
+import SiteExclusions from "@/components/SiteExclusions.vue";
 import AppSettings from "@/components/AppSettings.vue";
 import AppUnauthorized from "@/components/AppUnauthorized.vue";
 import { useAppStore } from "@/store";
@@ -44,6 +45,11 @@ export const router = createRouter({
       path: "/unauthorized",
       component: AppUnauthorized,
       beforeEnter: guestGuard,
+    },
+    {
+      path: "/exclusions",
+      component: SiteExclusions,
+      beforeEnter: authenticatedGuard,
     },
     {
       path: "/settings",

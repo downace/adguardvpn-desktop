@@ -233,3 +233,23 @@ func (a *App) RemoveFavoriteLocation(location string) error {
 	delete(a.config.FavoriteLocations, location)
 	return a.config.save()
 }
+
+func (a *App) AdGuardGetExclusionMode() (adguard.ExclusionMode, error) {
+	return a.adGuardCli.GetExclusionMode()
+}
+
+func (a *App) AdGuardSetExclusionMode(mode adguard.ExclusionMode) error {
+	return a.adGuardCli.SetExclusionMode(mode)
+}
+
+func (a *App) AdGuardExclusionsShow() ([]string, error) {
+	return a.adGuardCli.ExclusionsShow()
+}
+
+func (a *App) AdGuardExclusionsAdd(exclusions []string) error {
+	return a.adGuardCli.ExclusionsAdd(exclusions)
+}
+
+func (a *App) AdGuardExclusionsRemove(exclusion string) error {
+	return a.adGuardCli.ExclusionsRemove(exclusion)
+}
