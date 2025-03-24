@@ -27,8 +27,10 @@ var trayIconConnected []byte
 var trayIconDisconnected []byte
 
 type AppTrayMenuItems struct {
-	mToggleWindow *systray.MenuItem
-	mConnect      *systray.MenuItem
+	mToggleWindow      *systray.MenuItem
+	mConnect           *systray.MenuItem
+	mLocations         *systray.MenuItem
+	mLocationsSubItems []*systray.MenuItem
 }
 
 type App struct {
@@ -42,6 +44,8 @@ type App struct {
 	adGuardCli            adguard.Cli
 }
 
+const trayMenuMaxLocations = 5
+
 func cwd() string {
 	executablePath, _ := os.Executable()
 	return filepath.Dir(executablePath)
@@ -54,7 +58,8 @@ func NewApp() *App {
 
 	app.trayStart, app.trayEnd = systray.RunWithExternalLoop(app.initTray(), nil)
 	app.adGuardCli = adguard.Cli{
-		OnStatusChange: app.handleStatusChange,
+		OnStatusChange:    app.handleStatusChange,
+		OnLocationsLoaded: app.handleLocationsLoaded,
 	}
 
 	return &app
@@ -79,6 +84,8 @@ func (a *App) initTray() func() {
 		a.trayMenuItems.mToggleWindow = systray.AddMenuItem("Hide Window", "Hide Window")
 		systray.AddSeparator()
 		a.trayMenuItems.mConnect = systray.AddMenuItem("Connect", "Connect")
+		a.trayMenuItems.mLocations = systray.AddMenuItem("Locations", "Locations")
+		a.trayMenuItems.mLocations.Hide()
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit")
 
@@ -217,6 +224,29 @@ func (a *App) handleStatusChange(status *adguard.Status) {
 		systray.SetTitle("AdGuard VPN - Disconnected")
 		a.trayMenuItems.mConnect.SetTitle("Connect")
 		a.trayMenuItems.mConnect.Enable()
+	}
+}
+
+func (a *App) handleLocationsLoaded(locations []adguard.Location) {
+	for _, item := range a.trayMenuItems.mLocationsSubItems {
+		item.Remove()
+	}
+	a.trayMenuItems.mLocationsSubItems = make([]*systray.MenuItem, 0)
+
+	if len(locations) > 0 {
+		a.trayMenuItems.mLocations.Show()
+		for _, location := range locations[:min(len(locations), trayMenuMaxLocations)] {
+			label := fmt.Sprintf("%s, %s (%dms)", location.City, location.Country, location.Ping)
+			item := a.trayMenuItems.mLocations.AddSubMenuItem(label, label)
+			go func() {
+				for range item.ClickedCh {
+					_ = a.adGuardCli.Connect(location.City)
+				}
+			}()
+			a.trayMenuItems.mLocationsSubItems = append(a.trayMenuItems.mLocationsSubItems, item)
+		}
+	} else {
+		a.trayMenuItems.mLocations.Hide()
 	}
 }
 

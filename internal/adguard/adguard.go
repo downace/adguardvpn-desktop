@@ -62,8 +62,9 @@ type Location struct {
 }
 
 type Cli struct {
-	CliBin         string
-	OnStatusChange func(status *Status)
+	CliBin            string
+	OnStatusChange    func(*Status)
+	OnLocationsLoaded func([]Location)
 
 	locations []Location
 	status    *Status
@@ -158,6 +159,7 @@ func (a *Cli) GetLocations() ([]Location, error) {
 			return nil, err
 		}
 		a.locations = newLocations
+		a.OnLocationsLoaded(a.locations)
 	}
 
 	return a.locations, nil
