@@ -21,7 +21,3 @@ Download from [Releases](https://github.com/downace/adguardvpn-desktop/releases)
 1. Install Wails CLI: https://wails.io/docs/gettingstarted/installation
 2. Clone or download this repository
 3. Run `wails build`
-
-## Known issues
-
-- Connection requires root permissions. Currently, password should be entered in terminal

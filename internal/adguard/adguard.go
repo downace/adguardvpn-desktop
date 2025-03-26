@@ -6,6 +6,7 @@ import (
 	"github.com/downace/adguardvpn-desktop/internal/common"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"os"
 	"os/exec"
 	"regexp"
 	"slices"
@@ -62,9 +63,10 @@ type Location struct {
 }
 
 type Cli struct {
-	CliBin            string
-	OnStatusChange    func(*Status)
-	OnLocationsLoaded func([]Location)
+	CliBin             string
+	SudoAskpassCommand string
+	OnStatusChange     func(*Status)
+	OnLocationsLoaded  func([]Location)
 
 	locations []Location
 	status    *Status
@@ -82,6 +84,13 @@ func (a *Cli) exec(args ...string) (string, error) {
 	}
 
 	return stripansi.Strip(output), err
+}
+
+func (a *Cli) elevate() error {
+	cmd := exec.Command("sudo", "-v", "-A")
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf(`SUDO_ASKPASS=%s`, a.SudoAskpassCommand))
+	return cmd.Run()
 }
 
 func (a *Cli) Version() (string, error) {
@@ -173,6 +182,12 @@ var (
 )
 
 func (a *Cli) Connect(location string) error {
+	err := a.elevate()
+
+	if err != nil {
+		return err
+	}
+
 	status, err := a.GetStatus()
 	if err != nil {
 		return err

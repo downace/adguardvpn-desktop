@@ -42,6 +42,7 @@ type App struct {
 	shouldShutdownOnClose bool
 	trayMenuItems         AppTrayMenuItems
 	adGuardCli            adguard.Cli
+	sudoAskpassFile       *os.File
 }
 
 const trayMenuMaxLocations = 5
@@ -56,7 +57,6 @@ func NewApp() *App {
 		config: makeConfig(filepath.Join(cwd(), "config.yaml")),
 	}
 
-	app.trayStart, app.trayEnd = systray.RunWithExternalLoop(app.initTray(), nil)
 	app.adGuardCli = adguard.Cli{
 		OnStatusChange:    app.handleStatusChange,
 		OnLocationsLoaded: app.handleLocationsLoaded,
@@ -110,8 +110,52 @@ func (a *App) initTray() func() {
 	}
 }
 
+func (a *App) initSudoAskpassCommand() (string, error) {
+	file, err := os.CreateTemp(os.TempDir(), "sudo-askpass-*.sh")
+
+	if err != nil {
+		return "", err
+	}
+
+	bin, _ := os.Executable()
+
+	_, err = file.WriteString(fmt.Sprintf(`#!/bin/sh
+%s --sudo-askpass
+`, bin))
+	if err != nil {
+		return "", err
+	}
+	err = file.Chmod(0o700)
+	if err != nil {
+		return "", err
+	}
+
+	err = file.Close()
+	if err != nil {
+		return "", err
+	}
+
+	a.sudoAskpassFile = file
+
+	return file.Name(), nil
+}
+
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	sudoAskpassCommand, err := a.initSudoAskpassCommand()
+
+	if err != nil {
+		a.shouldShutdownOnClose = true
+		runtime.WindowHide(ctx)
+		_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+			Type:    runtime.ErrorDialog,
+			Title:   "Error",
+			Message: fmt.Sprintf("Failed to initialize sudo prompt:\n%s", err),
+		})
+		runtime.Quit(ctx)
+		return
+	}
 
 	sigintCh := make(chan os.Signal, 1)
 	signal.Notify(sigintCh, os.Interrupt)
@@ -121,9 +165,10 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}()
 
+	a.trayStart, a.trayEnd = systray.RunWithExternalLoop(a.initTray(), nil)
 	a.trayStart()
 
-	err := a.config.load()
+	err = a.config.load()
 
 	if err != nil {
 		_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
@@ -134,6 +179,8 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	a.adGuardCli.CliBin = a.config.AdGuardBin
+	a.adGuardCli.SudoAskpassCommand = sudoAskpassCommand
+
 	_ = a.adGuardCli.RefreshStatus()
 }
 
@@ -147,7 +194,12 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 }
 
 func (a *App) shutdown(_ context.Context) {
-	a.trayEnd()
+	if a.trayEnd != nil {
+		a.trayEnd()
+	}
+	if a.sudoAskpassFile != nil {
+		_ = os.Remove(a.sudoAskpassFile.Name())
+	}
 }
 
 func (a *App) PickFilePath() (string, error) {
